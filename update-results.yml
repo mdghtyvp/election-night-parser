@@ -1,0 +1,38 @@
+name: Update Chittenden State's Attorney results
+
+on:
+  schedule:
+    # Every 5 minutes. GitHub Actions cron is best-effort and can lag
+    # a few minutes under load, especially on high-traffic nights.
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}   # lets you trigger a manual run from the Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  update-csv:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Fetch race and write CSV
+        run: python fetch_race_csv.py
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "results-bot"
+          git config user.email "results-bot@users.noreply.github.com"
+          if ! git diff --quiet -- chittenden_states_attorney.csv; then
+            git add chittenden_states_attorney.csv
+            git commit -m "Update results $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            git push
+          else
+            echo "No change in results, skipping commit."
+          fi
